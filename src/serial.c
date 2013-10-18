@@ -198,6 +198,10 @@ bool set_totalWidth(uchar data, uchar *buffer, uint byteNum, uint &ack){
 bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint &ack){
     // buffer 0 = precoded flag
     // buffer 1 = X coordinate
+
+    static uint totalBytes = 0;
+    uint pxByteNum == (byteNum-2)>>1; // Don't count bytes for the other matrix
+
     switch(byteNum){
         case 0:
             // Get the PRECODED flag
@@ -206,77 +210,93 @@ bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint &ack){
         case 1:
             // Get the X coordinate
             buffer[1] = data;
+
+            // Calculate the total number of bytes to receive,
+            // and save it in a static var
+            if(buffer[0]){
+                // Encoded, $bit_depth bits per color
+                // Height * colors * bit depth / bits per byte + token
+                totalBytes = MX_height *3 *MX_depth /8 +2;
+            }
+            else {
+                // Non-encoded, 1 byte per color
+                // Height * colors + token
+                totalBytes = MX_height *3 +2;
+            }
+
             return False;
         default:
-            // If not precoded, encode it
-            // (prepare the data to be sent over SPI)
-
             // Ignore the data meant for the other side
             if (byteNum%2 != !ID)
                 return False;
 
-            // Processing order differs between encoded and not encoded tx
+            // Processing order differs between encoded and non encoded tx
             if(buffer[0]){
                 // If encoded buffer the input and process 3 bytes at a time
-                buffer[2+((byteNum-2)%6)/2]
-                if((byteNum-2)%6/2 < 2)
-                    return False;
+                // of each depth-bit
+                if(MX_depth == 1){
+                    // 1 bit-depth, buffer 3 bytes
+                    buffer[2+pxByteNum%3] = data;
+                    if(pxByteNum%3 < 2)
+                        return False;
 
-                // Write array 0 first
-                // and later array 1 if the color depth > 1
-                if(byteNum-2 < MX_height*3/8){
-                    MX_pixelArray0[buffer[1]][0+((byteNum-2)/2] = buffer[2];
-                    MX_pixelArray0[buffer[1]][1+((byteNum-2)/2] = buffer[3];
-                    MX_pixelArray0[buffer[1]][2+((byteNum-2)/2] = buffer[4];
+                    // Save the data
+                    MX_pixelArray0[buffer[1]][pxByteNum-2] = buffer[2];
+                    MX_pixelArray0[buffer[1]][pxByteNum-1] = buffer[3];
+                    MX_pixelArray0[buffer[1]][pxByteNum-0] = buffer[4];
                 }
                 else{
-                    MX_pixelArray1[buffer[1]][0+((byteNum-2-MX_height*3/8)/2] = buffer[2];
-                    MX_pixelArray1[buffer[1]][1+((byteNum-2-MX_height*3/8)/2] = buffer[3];
-                    MX_pixelArray1[buffer[1]][2+((byteNum-2-MX_height*3/8)/2] = buffer[4];
-                }
+                    // 2 bit-depth, buffer 6 bytes
+                    buffer[2+pxByteNum%6] = data;
+                    if(pxByteNum%6 < 5)
+                        return False;
 
-                // Check if all the bytes have been received
-                if((   byteNum-2 >= (MX_height*3/8 -1) && MX_depth == 1)
-                    || byteNum-2 >= (MX_height*3*2/8 -1)
-                    ){
-                    ack = 0xffff;
-                    return True;
+                    // Save the data
+                    MX_pixelArray0[buffer[1]][pxByteNum-2] = buffer[2];
+                    MX_pixelArray0[buffer[1]][pxByteNum-1] = buffer[3];
+                    MX_pixelArray0[buffer[1]][pxByteNum-0] = buffer[4];
+                    MX_pixelArray1[buffer[1]][pxByteNum-2] = buffer[5];
+                    MX_pixelArray1[buffer[1]][pxByteNum-1] = buffer[6];
+                    MX_pixelArray1[buffer[1]][pxByteNum-0] = buffer[7];
                 }
             }
             else{
                 // If not encoded, buffer 24 bytes (R,G,B 8b per color)
                 // process both color depth arrays at the same time
-                buffer[2+((byteNum-2)%48)/2]
-                if((byteNum-2)%48/2 < 2)
+                buffer[2+pxByteNum %24] = data;
+                if(pxByteNum %24 < 23)
                     return False;
 
                 //
                 encodeBytes(buffer+2,MX_depth);
 
                 // Write  array both arrays at the same time
-                MX_pixelArray0[buffer[1]][0+((byteNum-2)/48] = buffer[2];
-                MX_pixelArray0[buffer[1]][1+((byteNum-2)/48] = buffer[3];
-                MX_pixelArray0[buffer[1]][2+((byteNum-2)/48] = buffer[4];
+                MX_pixelArray0[buffer[1]][pxByteNum/24-2] = buffer[2];
+                MX_pixelArray0[buffer[1]][pxByteNum/24-1] = buffer[3];
+                MX_pixelArray0[buffer[1]][pxByteNum/24-0] = buffer[4];
                 if(MX_depth != 1){
-                    MX_pixelArray1[buffer[1]][0+((byteNum-2)/48] = buffer[5];
-                    MX_pixelArray1[buffer[1]][1+((byteNum-2)/48] = buffer[6];
-                    MX_pixelArray1[buffer[1]][2+((byteNum-2)/48] = buffer[7];
-                }
-
-                // Check if all the bytes have been received
-                if((byteNum-2 >= MX_height*3 -1){
-                    ack = 0xffff;
-                    return True;
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-2] = buffer[5];
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-1] = buffer[6];
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-0] = buffer[7];
                 }
             }
+    }
+
+    // Check if it has finished
+    if(byteNum >= totalBytes-1){
+        ack = 0xffff;
+        return True;
     }
     return False;
 }
 bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint &ack){
-    * PC manda col0b0 col0b1 col1b0 ... ? *
     // buffer 0 = precoded flag
     // buffer 1 = X coordinate
     // buffer 2 = X length
+
+    static uint totalBytes = 0;
+    uint pxByteNum == (byteNum-3)>>1; // Don't count bytes for the other matrix
+
     switch(byteNum){
         case 0:
             // Get the PRECODED flag
@@ -289,73 +309,186 @@ bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint &ack){
         case 2:
             // Get the X length
             buffer[2] = data;
+
+            // Calculate the total number of bytes to receive,
+            // and save it in a static var
+            if(buffer[0]){
+                // Encoded, $bit_depth bits per color
+                // Height * columns * colors * bit depth / bits per byte + token
+                totalBytes = MX_height *buffer[2] *3 *MX_depth /8 +3;
+            }
+            else {
+                // Non-encoded, 1 byte per color
+                // Height * columns * colors + token
+                totalBytes = MX_height *buffer[2] *3 +3;
+            }
+
             return False;
         default:
-            // If not precoded, encode it
-            // (prepare the data to be sent over SPI)
-
             // Ignore the data meant for the other side
-            if (byteNum%2 != !ID)
+            if (!(byteNum%2) != !ID)
                 return False;
 
-            // Processing order differs between encoded and not encoded tx
+            // Processing order differs between encoded and non encoded tx
             if(buffer[0]){
                 // If encoded buffer the input and process 3 bytes at a time
-                buffer[2+((byteNum-2)%6)/2]
-                if((byteNum-2)%6/2 < 2)
-                    return False;
+                // of each depth-bit
+                if(MX_depth == 1){
+                    // 1 bit-depth, buffer 3 bytes
+                    buffer[3+pxByteNum%3] = data;
+                    if(pxByteNum%3 < 2)
+                        return False;
 
-                // Write array 0 first
-                // and later array 1 if the color depth > 1
-                if(byteNum-2 < MX_height*3/8){
-                    MX_pixelArray0[buffer[1]][0+((byteNum-2)/2] = buffer[2];
-                    MX_pixelArray0[buffer[1]][1+((byteNum-2)/2] = buffer[3];
-                    MX_pixelArray0[buffer[1]][2+((byteNum-2)/2] = buffer[4];
+                    // Save the data
+                    // Ignore the column-array boundaries,
+                    // so we don't have to do any costly calculations...
+                    MX_pixelArray0[buffer[1]][pxByteNum-2] = buffer[3];
+                    MX_pixelArray0[buffer[1]][pxByteNum-1] = buffer[4];
+                    MX_pixelArray0[buffer[1]][pxByteNum-0] = buffer[5];
                 }
                 else{
-                    MX_pixelArray1[buffer[1]][0+((byteNum-2-MX_height*3/8)/2] = buffer[2];
-                    MX_pixelArray1[buffer[1]][1+((byteNum-2-MX_height*3/8)/2] = buffer[3];
-                    MX_pixelArray1[buffer[1]][2+((byteNum-2-MX_height*3/8)/2] = buffer[4];
-                }
+                    // 2 bit-depth, buffer 6 bytes
+                    buffer[3+pxByteNum%6] = data;
+                    if(pxByteNum%6 < 5)
+                        return False;
 
-                // Check if all the bytes have been received
-                if((   byteNum-2 >= (MX_height*3/8 -1) && MX_depth == 1)
-                    || byteNum-2 >= (MX_height*3*2/8 -1)
-                    ){
-                    ack = 0xffff;
-                    return True;
+                    // Save the data
+                    // Ignore the column-array boundaries,
+                    // so we don't have to do any costly calculations...
+                    MX_pixelArray0[buffer[1]][pxByteNum-2] = buffer[3];
+                    MX_pixelArray0[buffer[1]][pxByteNum-1] = buffer[4];
+                    MX_pixelArray0[buffer[1]][pxByteNum-0] = buffer[5];
+                    MX_pixelArray1[buffer[1]][pxByteNum-2] = buffer[6];
+                    MX_pixelArray1[buffer[1]][pxByteNum-1] = buffer[7];
+                    MX_pixelArray1[buffer[1]][pxByteNum-0] = buffer[8];
                 }
             }
             else{
                 // If not encoded, buffer 24 bytes (R,G,B 8b per color)
                 // process both color depth arrays at the same time
-                buffer[2+((byteNum-2)%48)/2]
-                if((byteNum-2)%48/2 < 2)
+                buffer[3+pxByteNum %24] = data;
+                if(pxByteNum %24 < 23)
                     return False;
 
                 //
-                encodeBytes(buffer+2,MX_depth);
+                encodeBytes(buffer+3,MX_depth);
 
                 // Write  array both arrays at the same time
-                MX_pixelArray0[buffer[1]][0+((byteNum-2)/48] = buffer[2];
-                MX_pixelArray0[buffer[1]][1+((byteNum-2)/48] = buffer[3];
-                MX_pixelArray0[buffer[1]][2+((byteNum-2)/48] = buffer[4];
+                // Ignore the column-array boundaries,
+                // so we don't have to do any costly calculations...
+                MX_pixelArray0[buffer[1]][pxByteNum/24-2] = buffer[3];
+                MX_pixelArray0[buffer[1]][pxByteNum/24-1] = buffer[4];
+                MX_pixelArray0[buffer[1]][pxByteNum/24-0] = buffer[5];
                 if(MX_depth != 1){
-                    MX_pixelArray1[buffer[1]][0+((byteNum-2)/48] = buffer[5];
-                    MX_pixelArray1[buffer[1]][1+((byteNum-2)/48] = buffer[6];
-                    MX_pixelArray1[buffer[1]][2+((byteNum-2)/48] = buffer[7];
-                }
-
-                // Check if all the bytes have been received
-                if((byteNum-2 >= MX_height*3 -1){
-                    ack = 0xffff;
-                    return True;
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-2] = buffer[6];
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-1] = buffer[7];
+                    MX_pixelArray1[buffer[1]][pxByteNum/24-0] = buffer[8];
                 }
             }
     }
+
+    // Check if it has finished
+    if(byteNum >= totalBytes-1){
+        ack = 0xffff;
+        return True;
+    }
     return False;
 }
-bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint ack);
+bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint ack){
+    // buffer 0 = precoded flag
+
+    static uint totalBytes = 0;
+    uint pxByteNum == (byteNum-1)>>1; // Don't count bytes for the other matrix
+
+    switch(byteNum){
+        case 0:
+            // Get the PRECODED flag
+            buffer[0] = data & PRECODED;
+
+            // Calculate the total number of bytes to receive,
+            // and save it in a static var
+            if(buffer[0]){
+                // Encoded, $bit_depth bits per color
+                // Height * columns * colors * bit depth / bits per byte + token
+                totalBytes = MX_height *MX_width *3 *MX_depth /8 +1;
+            }
+            else {
+                // Non-encoded, 1 byte per color
+                // Height * columns * colors + token
+                totalBytes = MX_height *MX_width *3 +1;
+            }
+
+            return False;
+        default:
+            // Ignore the data meant for the other side
+            if (!(byteNum%2) != !ID)
+                return False;
+
+            // Processing order differs between encoded and non encoded tx
+            if(buffer[0]){
+                // If encoded buffer the input and process 3 bytes at a time
+                // of each depth-bit
+                if(MX_depth == 1){
+                    // 1 bit-depth, buffer 3 bytes
+                    buffer[1+pxByteNum%3] = data;
+                    if(pxByteNum%3 < 2)
+                        return False;
+
+                    // Save the data
+                    // Ignore the column-array boundaries,
+                    // so we don't have to do any costly calculations...
+                    MX_pixelArray0[0][pxByteNum-2] = buffer[1];
+                    MX_pixelArray0[0][pxByteNum-1] = buffer[2];
+                    MX_pixelArray0[0][pxByteNum-0] = buffer[3];
+                }
+                else{
+                    // 2 bit-depth, buffer 6 bytes
+                    buffer[1+pxByteNum%6] = data;
+                    if(pxByteNum%6 < 5)
+                        return False;
+
+                    // Save the data
+                    // Ignore the column-array boundaries,
+                    // so we don't have to do any costly calculations...
+                    MX_pixelArray0[0][pxByteNum-2] = buffer[1];
+                    MX_pixelArray0[0][pxByteNum-1] = buffer[2];
+                    MX_pixelArray0[0][pxByteNum-0] = buffer[3];
+                    MX_pixelArray1[0][pxByteNum-2] = buffer[4];
+                    MX_pixelArray1[0][pxByteNum-1] = buffer[5];
+                    MX_pixelArray1[0][pxByteNum-0] = buffer[6];
+                }
+            }
+            else{
+                // If not encoded, buffer 24 bytes (R,G,B 8b per color)
+                // process both color depth arrays at the same time
+                buffer[1+pxByteNum %24] = data;
+                if(pxByteNum %24 < 23)
+                    return False;
+
+                //
+                encodeBytes(buffer+1,MX_depth);
+
+                // Write  array both arrays at the same time
+                // Ignore the column-array boundaries,
+                // so we don't have to do any costly calculations...
+                MX_pixelArray0[0][pxByteNum/24-2] = buffer[1];
+                MX_pixelArray0[0][pxByteNum/24-1] = buffer[2];
+                MX_pixelArray0[0][pxByteNum/24-0] = buffer[3];
+                if(MX_depth != 1){
+                    MX_pixelArray1[0][pxByteNum/24-2] = buffer[4];
+                    MX_pixelArray1[0][pxByteNum/24-1] = buffer[5];
+                    MX_pixelArray1[0][pxByteNum/24-0] = buffer[6];
+                }
+            }
+    }
+
+    // Check if it has finished
+    if(byteNum >= totalBytes-1){
+        ack = 0xffff;
+        return True;
+    }
+    return False;
+}
 bool dat_interlaced_burst(uchar data, uchar *buffer, uint byteNum, uint &ack);
 
 
