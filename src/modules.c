@@ -155,53 +155,6 @@ __interrupt VectorNumber_Vrtc void RTC_interrupt(void){
 }
 
 
-
-// TPM
-
-#define reg(regist) (*(&(regist)+offset))
-#define regCh(regist) (*(&(regist)+offset+chOffset))
-
-void TPM_init(uchar module){
-    uchar offset = TPMxSC_off * (module-1);
-    // Center-aligned, clock source = BUSCLK/TPM_BUSDIV
-    reg(TPM1SC) = 0x28 | (LOG2_i(TPM_BUSDIV)&0x7);
-}
-
-void TPM_stop(uchar module){
-    uchar offset = TPMxSC_off * (module-1);
-    // Disables the module
-    reg(TPM1SC) = 0x0;
-}
-void TPM_enableChannel(uchar module, uchar channel){
-    uchar offset = TPMxSC_off * (module-1);
-    uchar chOffset = TPMxCxSC_off * (channel);
-    // Reserves the pin
-    regCh(TPM1C0SC) = 0x28;
-}
-void TPM_disableChannel(uchar module, uchar channel){
-    uchar offset = TPMxSC_off * (module-1);
-    uchar chOffset = TPMxCxSC_off * (channel);
-    // Disables de pin as output
-    regCh(TPM1C0SC) = 0x00;
-}
-void TPM_setDuty(uchar module, uchar channel, uint duty){
-    // duty in 0.1% steps
-    uchar offset = TPMxSC_off * (module-1);
-    uchar chOffset = TPMxCxSC_off * (channel);
-    // Set the channel module relative to the clock's
-    regCh(TPM1C0V) = reg(TPM1MOD)*duty/1000;
-}
-void TPM_setFrequency(uchar module, uint frequency){
-    uchar offset = TPMxSC_off * (module-1);
-    // Sets the module counter
-    if (frequency)
-        reg(TPM1MOD) = ((BUSCLK/TPM_BUSDIV)/frequency)&0xFFFF;
-    else
-        reg(TPM1MOD) = 0;
-}
-#undef reg
-#undef regCh
-
 // Analog-Digital Converter
 void (*ADC_interruptFunction)(void);
 
@@ -324,3 +277,84 @@ __interrupt VectorNumber_Virq void IRQ_interrupt(void){
     // Calls the function
     IRQ_interruptFunction();
 }
+
+
+// FlexTimer Module 1 / 2**prescaler
+void (*FTM1_interruptFunction)(void);
+
+void FTM1_enableInterrupts(void (*function)(void)){
+    FTM1_interruptFunction = function;
+    // Interrupt enable
+    FTM1SC_TOIE = 1;
+}
+__interrupt VectorNumber_Vftm1 void FTM1_interrupt(void){
+    // Cleans the interrupt flag
+    volatile uchar a = FTM1SC;
+    FTM1SC_TOF = 0;
+    // Calls the function
+    FTM1_interruptFunction();
+}
+
+
+// FlexTimer Module 2 / 2 / 2**prescaler
+void (*FTM2_interruptFunction)(void);
+
+void FTM2_enableInterrupts(void (*function)(void)){
+    FTM2_interruptFunction = function;
+    // Interrupt enable
+    FTM2SC_TOIE = 1;
+}
+__interrupt VectorNumber_Vftm2 void FTM2_interrupt(void){
+    // Cleans the interrupt flag
+    volatile uchar a = FTM2SC;
+    FTM2SC_TOF = 0;
+    // Calls the function
+    FTM2_interruptFunction();
+}
+
+
+
+// TPM
+
+#define reg(regist) (*(&(regist)+offset))
+#define regCh(regist) (*(&(regist)+offset+chOffset))
+
+void TPM_init(uchar module){
+    uchar offset = TPMxSC_off * (module-1);
+    // Center-aligned, clock source = BUSCLK/TPM_BUSDIV
+    reg(TPM1SC) = 0x28 | (LOG2_i(TPM_BUSDIV)&0x7);
+}
+void TPM_stop(uchar module){
+    uchar offset = TPMxSC_off * (module-1);
+    // Disables the module
+    reg(TPM1SC) = 0x0;
+}
+void TPM_enableChannel(uchar module, uchar channel){
+    uchar offset = TPMxSC_off * (module-1);
+    uchar chOffset = TPMxCxSC_off * (channel);
+    // Reserves the pin
+    regCh(TPM1C0SC) = 0x28;
+}
+void TPM_disableChannel(uchar module, uchar channel){
+    uchar offset = TPMxSC_off * (module-1);
+    uchar chOffset = TPMxCxSC_off * (channel);
+    // Disables de pin as output
+    regCh(TPM1C0SC) = 0x00;
+}
+void TPM_setDuty(uchar module, uchar channel, uint duty){
+    // duty in 0.1% steps
+    uchar offset = TPMxSC_off * (module-1);
+    uchar chOffset = TPMxCxSC_off * (channel);
+    // Set the channel module relative to the clock's
+    regCh(TPM1C0V) = reg(TPM1MOD)*duty/1000;
+}
+void TPM_setFrequency(uchar module, uint frequency){
+    uchar offset = TPMxSC_off * (module-1);
+    // Sets the module counter
+    if (frequency)
+        reg(TPM1MOD) = ((BUSCLK/TPM_BUSDIV)/frequency)&0xFFFF;
+    else
+        reg(TPM1MOD) = 0;
+}
+#undef reg
+#undef regCh

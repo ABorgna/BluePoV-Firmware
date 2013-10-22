@@ -1,7 +1,10 @@
 /*
-    Partes:
+    todo:
+        Led controller
 
-
+        Half luminance
+        Battery voltage
+        Saving
 */
 
 #include <hidef.h> /* for EnableInterrupts macro */
@@ -21,6 +24,9 @@ void main (void){
 
     RTC_init(RTC_MSECOND);
     RTC_enableInterrupts(rtc_1mS);
+
+    // Encoder input
+    fps_init();
 
     EnableInterrupts;
 

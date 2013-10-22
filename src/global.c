@@ -14,8 +14,8 @@ uint MX_totalWidth = MX_MAX_WIDTH;  // Number of pixels
                                     // the complete perimeter would occupy
 
 // Rotational speed variables
-uint FPS_clockMod;
-uint FPS_clockFreq;
+uint FPS_clockMod_real;
+uint FPS_clockMod_hyster;
 
 // Id
 bool ID;

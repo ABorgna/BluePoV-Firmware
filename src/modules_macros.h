@@ -185,12 +185,30 @@
     ADCSC1_COCO = 0;                                                \
 }
 
-
-
-
-
 // General Purpose I/O
 #define GPIO_OUT(port,offset) {SNP_maskWrite(port+PTxDD_off,0xff,1<<offset);}
 #define GPIO_PULLUP(port,offset) {SNP_maskWrite(port+PTxPE_off,0xff,1<<offset);}
+
+// FlexTimer Module 1, busclk / 2**prescaler
+#define FTM2_init(prescaler){   \
+    /* Bus clock */             \
+    FTM2SC_CPWMS = 1;           \
+    FTM2MODE_FTMEN = 1;         \
+    /* Prescaler */             \
+    FTM2SC_PS = prescaler;      \
+}
+#define FTM1_setMod(mod) {FTM1MOD = mod;}
+#define FTM1_count FTMCNT
+
+// FlexTimer Module, busclk / 2 / 2**prescaler
+#define FTM2_init(prescaler){   \
+    /* Bus clock /2 */          \
+    FTM2SC_CPWMS = 1;           \
+    /* Prescaler */             \
+    FTM2SC_PS = prescaler;      \
+}
+#define FTM2_setMod(mod) {FTM1MOD = mod;}
+#define FTM2_count FTMCNT
+
 
 #endif

@@ -135,4 +135,16 @@ void IRQ_init(MOD_Flags flags);
 void IRQ_stop(void);
 void IRQ_enableInterrupts(void (*function)(void));
 
+// FlexTimer Module 1, busclk / 2**prescaler
+//void FTM1_init(uchar prescaler);      // Macro
+//void FTM1_setMod(uint);               // Macro
+//uint FTM1_count;                      // Macro
+void FTM1_enableInterrupts(void (*function)(void));
+
+// FlexTimer Module, busclk / 2 / 2**prescaler
+//void FTM2_init(uchar prescaler);      // Macro
+//void FTM2_setMod(uint);               // Macro
+//uint FTM2_count;                      // Macro
+void FTM2_enableInterrupts(void (*function)(void));
+
 #endif // MODULES_H_GUARD

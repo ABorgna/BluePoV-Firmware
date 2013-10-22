@@ -19,8 +19,8 @@ extern uint MX_totalWidth;      // Number of pixels
                                 // the complete perimeter would occupy
 
 // Rotational speed variables
-extern uint FPS_clockMod;
-extern uint FPS_clockFreq;
+extern uint FPS_clockMod_real;
+extern uint FPS_clockMod_actual;
 
 // Id
 extern bool ID;

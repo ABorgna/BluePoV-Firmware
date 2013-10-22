@@ -10,12 +10,16 @@
 #define MX_MAX_WIDTH 480
 #define MX_MAX_HEIGHT 64
 
+/*      Encoder         */
+#define FPS_HYSTERESIS 1
+
+/*      Leds            */
+#define LED_PRESCALER 7
+
 /*      Types           */
 typedef unsigned char uchar;
 typedef unsigned int uint;
-typedef unsigned char bool;
-#define False 0
-#define True !False
+typedef enum {False = 0, True = 1} bool;
 #define NONE 0
 #define EVEN 0
 #define ODD 1
