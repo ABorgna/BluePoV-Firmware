@@ -1,6 +1,1 @@
-#ifndef ENCODER_H_
-#define ENCODER_H_
-
-void fps_init(void);
-
-#endif /* ENCODER_H_ */
+../firm/Project_Headers/encoder.h
