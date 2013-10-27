@@ -4,20 +4,30 @@
 #define CONSTANTS_H_GUARD
 
 /*      Values          */
-#define BUSCLK 48000000     /* Frecuencia de bus        */
+#define BUSCLK 8000000     /* Frecuencia de bus        */
 #define VOLTAGE 3.3         /* Voltaje de alimentacion  */
 
-#define SERIAL_BAUDS 115200
+#define SCI_BAUDS 115200
+#define SPI_BAUDS 115200
 
 /*      Matrix params   */
 #define MX_MAX_WIDTH 480
 #define MX_MAX_HEIGHT 64
 
 /*      Encoder         */
+#define FPS_PRESCALER 7
 #define FPS_HYSTERESIS 1
 
 /*      Leds            */
-#define LED_PRESCALER 7
+#define LED_PRESCALER 0
+#define LED_OUT_EN PTED_PTED5
+#define LED_OUT_CLK PTED_PTED4
+#define LED_OUT_EN_PORT PTEDD_PTEDD5
+#define LED_OUT_CLK_PORT PTEDD_PTEDD4
+
+/*      Id            	*/
+#define ID_PIN PTDD_PTDD2
+#define ID_PIN_PULL PTDPE_PTDPE2
 
 /*      Types           */
 typedef unsigned char uchar;

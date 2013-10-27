@@ -121,7 +121,7 @@ __interrupt VectorNumber_Vsci1tx void SCI_txInterrupt(void){
 
 
 // SPI
-/**
+/**/
 void (*SPI_rxInterruptFunction)(void);
 void (*SPI_txInterruptFunction)(void);
 

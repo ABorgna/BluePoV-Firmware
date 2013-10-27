@@ -50,7 +50,7 @@ bool (*commands[])(uchar,uchar*,uint,uint*) = {
 
 
 void serial_init(void){
-    SCI_init(SERIAL_BAUDS,MOD_NONE);
+    SCI_init(SCI_BAUDS,MOD_NONE);
 }
 
 void serial_update(void){

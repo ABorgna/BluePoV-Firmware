@@ -7,8 +7,9 @@ void fps_inter(void);
 void fps_init(void){
     // Signal input, active high
     IRQ_init(IRQ_EDGE|IRQ_NO_PULLUP|IRQ_RISING);
+    IRQ_enableInterrupts(fps_inter);
 
-    FTM1_init(0);
+    FTM2_init(FPS_PRESCALER);
 }
 
 // Internal functions
@@ -21,8 +22,8 @@ void fps_inter(void){
     LED_columnByte = 0;
 
     // The column clock has a 256 preescaler
-    temp = (ulong)FTM1_getCount() * 256;
-    FTM1_resetCount();
+    temp = (ulong)FTM2_getCount() * 256;
+    FTM2_resetCount();
     // Interrupt in every column
     temp /= MX_totalWidth;
     // When showing a 2-bits depth interrupt in the sub-columns

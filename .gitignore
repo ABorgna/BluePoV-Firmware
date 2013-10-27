@@ -1,2 +1,6 @@
 *.sublime*
-firm/*
+firm/F*
+firm/L*
+firm/R*
+firm/Project_Settings
+firm/.*
