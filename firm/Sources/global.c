@@ -20,7 +20,10 @@ uint MX_totalWidth = MX_MAX_WIDTH;  // Number of pixels
 
 // Rotational speed variables
 uint FPS_clockMod_real = 100;
-uint FPS_clockMod_hyster = 100;
+uint FPS_clockMod_actual = 100;
 
 // Id
 bool ID;
+
+// Debugging
+uchar DEBUG;

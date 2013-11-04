@@ -30,4 +30,18 @@ extern uint FPS_clockMod_actual;
 // Id
 extern bool ID;
 
+// Debugging
+//#define DEBUG_PRINT
+
+#ifdef DEBUG_PRINT
+
+#include <stdio.h>
+#define printDebug(p){printf(p);}
+
+#else
+
+#define printDebug(p){;}
+
+#endif /* DEBUG_ENABLED */
+
 #endif

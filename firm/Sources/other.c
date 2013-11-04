@@ -6,6 +6,6 @@
 
 void id_init(void){
 	ID_PIN_PULL = 1;
-	ID = ID_PIN;
+	ID = !ID_PIN;
 	ID_PIN_PULL = 0;
 }

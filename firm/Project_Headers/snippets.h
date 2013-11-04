@@ -3,15 +3,6 @@
 
 #include "constants.h"
 
-// Debuger
-// todo: buscar un mejor lugar para esto
-#define DEBUG_ENABLED
-extern uchar DEBUG;
-#define DEBUG_MODES 3
-#define DEBUG_DISPLAY 1
-#define DEBUG_USB 2
-#define DEBUG_ZERO 3
-
 // 8b Integer to cstring
 uchar* SNP_ctoa(uchar, uchar *buff);
 // 8b Integer to cstring, hexa, 2 digits

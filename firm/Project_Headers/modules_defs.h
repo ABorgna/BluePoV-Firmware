@@ -41,10 +41,12 @@ typedef enum {
     SPI_LSBFIRST = 0x4,
     SPI_INVERTCLK = 0x8,
     // RTC
-    RTC_SECOND = 0x1,
+    RTC_SECOND = 7,
+    /*
     RTC_100MSECOND = 0x2,
     RTC_10MSECOND = 0x4,
     RTC_MSECOND = 0x8,
+    */
     // ADC
     ADC_8B = 0x0,
     ADC_12B = 0x1,

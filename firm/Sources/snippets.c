@@ -1,9 +1,5 @@
 #include "snippets.h"
 
-// Debuger
-// todo: buscar un mejor lugar para esto
-uchar DEBUG;
-
 // 8b Integer to cstring
 uchar* SNP_ctoa(uchar number, uchar *buff){
     uchar *ptr;

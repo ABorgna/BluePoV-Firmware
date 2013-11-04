@@ -18,12 +18,15 @@ void CPU_extCLK(void);
 // Serial Comunication Interface
 void SCI_init(long bauds, MOD_Flags flags);
 void SCI_stop(void);
-void SCI_enableRxInterrupts(void (*function)(void));
+void SCI_enableRxInterrupts(void (*function)(uchar));
 void SCI_enableTxInterrupts(void (*function)(void));
-void SCI_disableInterrupts(void);
+void SCI_disableinterrupts(void);
 void SCI_write(uchar);
 uchar SCI_read(void);
 uchar SCI_rxPoll(void); /* True if buffer full */
+#define SCI_READ SCI2D /* True if buffer full */
+#define SCI_RXPOLL SCI2S1_RDRF /* True if buffer full */
+#define SCI_WRITE(data) {while(!SCI2S1_TDRE){}; SCI2D = (data);}
 
 // Serial Peripheral Interface
 void SPI_init(long bauds, MOD_Flags flags);
@@ -36,7 +39,7 @@ void SPI_write(uchar);
 uchar SPI_read(void);
 uchar SPI_txBufferEmpty(void);
 uchar SPI_rxBufferReady(void);
-#define SPI_WRITE(data) {while(!SPI1S_SPTEF); SPI1D = data;}
+#define SPI_WRITE(data) {while(!SPI1S_SPTEF){}; SPI1D = (data);}
 #define SPI_TXBUFFEREMPTY() {SPIS_SPTEF}
 
 // Interrupt 1S or 1mS

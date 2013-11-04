@@ -9,7 +9,7 @@ uint LED_bytesPerCol;
 // External definitions
 void led_init(void){
 	// Serial output
-	SPI_init(SPI_BAUDS,SPI_MASTER);
+	SPI_init(SPI_BAUDS,SPI_MASTER|SPI_INVERTCLK);
     
     // Negated
     LED_OUT_EN = 0;

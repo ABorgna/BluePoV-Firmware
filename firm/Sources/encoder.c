@@ -31,7 +31,7 @@ void fps_inter(void){
 
     // Set the clock modulo, with a defined hysteresis
     if(FPS_clockMod_real-FPS_HYSTERESIS > FPS_clockMod_actual){
-        FPS_clockMod_actual = FPS_clockMod_real - FPS_HYSTERESIS;
+    	FPS_clockMod_actual = FPS_clockMod_real - FPS_HYSTERESIS;
     }
     else if (FPS_clockMod_real+FPS_HYSTERESIS < FPS_clockMod_actual){
         FPS_clockMod_actual = FPS_clockMod_real + FPS_HYSTERESIS;

@@ -1,6 +1,21 @@
 #include "serial.h"
 
 void encodeBytesSerie(uchar* buff, uchar depth);
+void rxIdleReset(void);		// Reset the sequence if nothing is received in >1s
+void receiveByte(uchar);
+
+
+bool waiting_tkn = True;
+bool receivedLastSecond = True;
+
+#define rxQueueSize 64
+uchar rxQueue[rxQueueSize];
+// Had strange errors using pointers
+uchar rxQueueHead = 0;
+uchar rxQueueTail = 0;
+
+
+
 
 // Command functions,
 // receive the byte number, and a reference to the acknowledge byte
@@ -51,20 +66,28 @@ bool (*commands[])(uchar,uchar*,uint,uint*) = {
 
 void serial_init(void){
     SCI_init(SCI_BAUDS,MOD_NONE);
+    SCI_enableRxInterrupts(receiveByte);
+
+    // Reset the sequence if nothing is received in 1s
+    RTC_init(1);	// 8mS
+    RTC_enableInterrupts(rxIdleReset);
 }
 
 void serial_update(void){
-    static bool waiting_tkn = True;
     static uchar fnNum = 0;
     static uint byteNum;
     static uchar buffer[32];
     uint ack;
-
-    // Check if there is something in the reception buffer,
-    // and return if not
-    if(!SCI_rxPoll)
-        return;
-
+    uchar read; 
+    
+    if(rxQueueTail == rxQueueHead){
+    	return;
+    }
+    // FIFO
+    read = rxQueue[rxQueueHead];
+    if(++rxQueueHead >= rxQueueSize)
+    	rxQueueHead = 0;
+	
     // If this is the first byte, translate the command number to
     // its correspondent position in the commands array
     if(waiting_tkn){
@@ -72,10 +95,16 @@ void serial_update(void){
         waiting_tkn = False;
         fnNum = 0;
 
-        switch(SCI_read()){
+        printDebug("Inicio de funcion\r\n");
+
+        switch(read){
+        	case (DATA | PRECODED | INTERLACED_BURST):
             case (DATA | INTERLACED_BURST): 			fnNum++;
+            case (DATA | PRECODED | BURST):
             case (DATA | BURST):                        fnNum++;
+            case (DATA | PRECODED | WRITE_SECTION):
             case (DATA | WRITE_SECTION):                fnNum++;
+            case (DATA | PRECODED | WRITE_COLUMN):
             case (DATA | WRITE_COLUMN):                 fnNum++;
             case (COMMAND | SET | TOTAL_WIDTH):         fnNum++;
             case (COMMAND | SET | DEPTH):               fnNum++;
@@ -97,19 +126,33 @@ void serial_update(void){
     // Call the function if there's any selected
     // and send the response if it has finished
     if (!waiting_tkn &&
-    		(waiting_tkn = commands[fnNum](SCI_read(),buffer,byteNum++,&ack))){
-        SCI_write((uchar)(ack>>8));
-        SCI_write((uchar)(ack&0xFF));
+    		(waiting_tkn = commands[fnNum](read,buffer,byteNum++,&ack))){
+        SCI_WRITE((uchar)(ack>>8));
+        SCI_WRITE((uchar)(ack&0xFF));
     }
 }
 
+// Internal function
+void receiveByte(uchar data){
+	// Receive a byte after an interruption,
+	// and enqueue it
+    rxQueue[rxQueueTail] = data;
+    if(++rxQueueTail >= rxQueueSize)
+    	rxQueueTail = 0;
+    receivedLastSecond = True;
+}
+void rxIdleReset(void){
+	if(!receivedLastSecond && !waiting_tkn){
+		rxQueueHead = rxQueueTail;
+		waiting_tkn = True;
+	}
+    receivedLastSecond = False;
+}
 
 // Command functions
 
 bool fn_ping(uchar data, uchar *buffer, uint byteNum, uint *ack){
-    if (byteNum == 0)
-        return False;
-    *ack = data;
+	printDebug("Ping!\r\n");
     return True;
 }
 bool fn_fps(uchar data, uchar *buffer, uint byteNum, uint *ack){
@@ -119,6 +162,7 @@ bool fn_fps(uchar data, uchar *buffer, uint byteNum, uint *ack){
 
 bool fn_clean(uchar data, uchar *buffer, uint byteNum, uint *ack){
     uint x,y;
+	printDebug("Clean\r\n");
     for(x=MX_MAX_WIDTH;x-->0;){
         for(y=MX_MAX_HEIGHT*3/2/8;y-->0;){
             MX_pixelArray0[x][y] = 0;
@@ -128,27 +172,34 @@ bool fn_clean(uchar data, uchar *buffer, uint byteNum, uint *ack){
     *ack = 0xffff;
     return True;
 }
-bool fn_store(uchar data, uchar *buffer, uint byteNum, uint *ack);
-
+bool fn_store(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	//todo
+	return True;
+}
 
 bool get_height(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get height\r\n");
 	*ack = MX_height;
     return True;
 }
 bool get_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get width\r\n");
 	*ack = MX_width;
     return True;
 }
 bool get_depth(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get depth\r\n");
 	*ack = MX_depth;
     return True;
 }
 bool get_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get t width\r\n");
 	*ack = MX_totalWidth;
     return True;
 }
 
 bool set_height(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Set height\r\n");
     switch(byteNum){
         case 0:
             return False;
@@ -156,12 +207,13 @@ bool set_height(uchar data, uchar *buffer, uint byteNum, uint *ack){
             buffer[0] = data;
             return False;
         default:
-            MX_height = (uint)(buffer[0])<<8 & data;
+            MX_height = (uint)(buffer[0])<<8 | data;
             *ack = 0xffff;
             return True;
     }
 }
 bool set_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Set width\r\n");
     switch(byteNum){
         case 0:
             return False;
@@ -175,12 +227,14 @@ bool set_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
     }
 }
 bool set_depth(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Set depth\r\n");
     if (byteNum == 0)
         return False;
     *ack = 0xffff;
     return True;
 }
 bool set_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Set t width\r\n");
     switch(byteNum){
         case 0:
             return False;
@@ -200,6 +254,8 @@ bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint *ack){
 
     static uint totalBytes = 0;
     uint pxByteNum = (byteNum-2)>>1; // Don't count bytes for the other matrix
+
+	printDebug("Write column\r\n");
 
     switch(byteNum){
         case 0:
@@ -295,6 +351,8 @@ bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack){
 
     static uint totalBytes = 0;
     uint pxByteNum = (byteNum-3)>>1; // Don't count bytes for the other matrix
+
+	printDebug("Write section\r\n");
 
     switch(byteNum){
         case 0:
@@ -398,6 +456,10 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
 
     static uint totalBytes = 0;
     uint pxByteNum = (byteNum-1)>>1; // Don't count bytes for the other matrix
+    // For optimisation purposes
+    static uchar colBytes;
+
+	printDebug("Burst\r\n");
 
     switch(byteNum){
         case 0:
@@ -416,7 +478,9 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                 // Height * columns * colors + token
                 totalBytes = MX_height *MX_width *3 +1;
             }
-
+            // For optimisation purposes
+            colBytes = MX_height >= 64 ? 4*3 : 2*3;
+            
             return False;
         default:
             // Ignore the data meant for the other side
@@ -430,15 +494,16 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                 if(MX_depth == 1){
                     // 1 bit-depth, buffer 3 bytes
                     buffer[1+pxByteNum%3] = data;
+                    
                     if(pxByteNum%3 < 2)
                         return False;
+                    
 
                     // Save the data
-                    // Ignore the column-array boundaries,
-                    // so we don't have to do any costly calculations...
-                    MX_pixelArray0[0][pxByteNum-2] = buffer[1];
-                    MX_pixelArray0[0][pxByteNum-1] = buffer[2];
-                    MX_pixelArray0[0][pxByteNum-0] = buffer[3];
+                    // Calculate the divider at the beginning of the reception
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[1];
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[2];
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[3];
                 }
                 else{
                     // 2 bit-depth, buffer 6 bytes
@@ -447,14 +512,13 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                         return False;
 
                     // Save the data
-                    // Ignore the column-array boundaries,
-                    // so we don't have to do any costly calculations...
-                    MX_pixelArray0[0][pxByteNum-2] = buffer[1];
-                    MX_pixelArray0[0][pxByteNum-1] = buffer[2];
-                    MX_pixelArray0[0][pxByteNum-0] = buffer[3];
-                    MX_pixelArray1[0][pxByteNum-2] = buffer[4];
-                    MX_pixelArray1[0][pxByteNum-1] = buffer[5];
-                    MX_pixelArray1[0][pxByteNum-0] = buffer[6];
+                    // Calculate the divider at the beginning of the reception
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[1];
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[2];
+                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[3];
+                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[4];
+                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[5];
+                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[6];
                 }
             }
             else{
@@ -488,8 +552,10 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
     }
     return False;
 }
-bool dat_interlaced_burst(uchar data, uchar *buffer, uint byteNum, uint *ack);
-
+bool dat_interlaced_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	// todo
+	return True;
+}
 
 
 void encodeBytesSerie(uchar* buff, uchar depth){

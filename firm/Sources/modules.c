@@ -26,26 +26,27 @@ void CPU_extCLK(void){
           | MCGC2_EREFS_MASK    /* because crystal is being used */                     
           | MCGC2_RANGE_MASK    /* 12 MHz is in high freq range */                      
           | MCGC2_ERCLKEN_MASK; /* activate external reference clock */                 
-    while (MCGSC_OSCINIT == 0);                                                         
+    while (MCGSC_OSCINIT == 0){};                                                         
                                                                                         
     /* select clock mode */                                                             
     MCGC1 = (2<<6)          /* CLKS = 10 -> external reference clock. */                
           | (3<<3);         /* RDIV = 3 -> 12MHz/8=1.5 MHz */                           
                                                                                         
     /* wait for mode change to be done */                                               
-    while (MCGSC_IREFST != 0);                                                          
-    while (MCGSC_CLKST != 2);                                                           
+    while (MCGSC_IREFST != 0){};                                                          
+    while (MCGSC_CLKST != 2){};                                                           
                                                                                         
     /* switch from FBE to PBE (PLL bypassed internal) mode */                           
     MCGC3 = MCGC3_PLLS_MASK                                                             
           | (8<<0);         /* VDIV=6 -> multiply by 32 -> 1.5MHz * 32 = 48MHz */       
-    while(MCGSC_PLLST != 1);                                                            
-    while(MCGSC_LOCK != 1);                                                             
+    //      | (12<<0);         /* VDIV=6 -> multiply by 48 -> 1.5MHz * 48 = 72MHz */       
+    while(MCGSC_PLLST != 1){};                                                            
+    while(MCGSC_LOCK != 1){};                                                             
                                                                                         
     /* finally switch from PBE to PEE (PLL enabled external mode) */                    
     MCGC1 = (0<<6)          /* CLKS = 0 -> PLL or FLL output clock. */                  
           | (3<<3);         /* RDIV = 3 -> 12MHz/8=1.5 MHz */                           
-    while(MCGSC_CLKST!=3);                                                              
+    while(MCGSC_CLKST!=3){};                                                              
                                                                                         
     /* Now MCGOUT=48MHz, BUS_CLOCK=24MHz */                                             
 }
@@ -53,68 +54,68 @@ void CPU_extCLK(void){
 
 
 // SCI
-/**
-void (*SCI_rxInterruptFunction)(void);
+/**/
+void (*SCI_rxInterruptFunction)(uchar);
 void (*SCI_txInterruptFunction)(void);
-volatile uchar SCI_readData;
+void SCI_txInterrupt(void);
 
 void SCI_init(long bauds, MOD_Flags flags){
 	uint prescaler = ((BUSCLK/16)/bauds)&0xFFFF;
     // Set baud rate
-    SCI1BDL =  prescaler & 0xFF;                                   
-    SCI1BDH = (prescaler >> 8) & 0x1F;                              
+    SCI2BDL =  prescaler & 0xFF;                                   
+    SCI2BDH = (prescaler >> 8) & 0x1F;                              
     // Configure bits & parity
-    SCI1C1_M = flags & SCI_NINEBITS ? 1 : 0;     // 8+1b
+    SCI2C1_M = flags & SCI_NINEBITS ? 1 : 0;     // 8+1b
                                                 // Parity enable
-    SCI1C1_PE = flags & (SCI_ODDPARITY|SCI_EVENPARITY) ? 1 : 0;     
-    SCI1C1_PT = flags & SCI_ODDPARITY ? 1 : 0;   // Parity
+    SCI2C1_PE = flags & (SCI_ODDPARITY|SCI_EVENPARITY) ? 1 : 0;     
+    SCI2C1_PT = flags & SCI_ODDPARITY ? 1 : 0;   // Parity
     // Enable Tx & Rx
-    SCI1C2_TE = 1;                                                  
-    SCI1C2_RE = 1;                                                  
+    SCI2C2_TE = 1;                                                  
+    SCI2C2_RE = 1;                                                  
 }
 void SCI_stop(void) {            
-    SCI_disableinterrupts();    
-    SCIC2_TE = 0;               
-    SCIC2_RE = 0;               
+	SCI_disableinterrupts();  
+    SCI2C2_TE = 0;               
+    SCI2C2_RE = 0;               
 }
-void SCI_enableRxInterrupts(void (*function)(void)){
+void SCI_enableRxInterrupts(void (*function)(uchar)){
     // Enable interrupts from Rx (SCIS1_RDRF)
     // Call the given function on desired interruption
     SCI_rxInterruptFunction = function;
-    SCI_readData = 0;
-    SCI1C2_RIE = 1;
+    SCI2C2_RIE = 1;
 }
 void SCI_enableTxInterrupts(void (*function)(void)){
     // Enable interrupts from Rx (SCIS1_RDRF)
     // Call the given function on desired interruption
     SCI_txInterruptFunction = function;
-    SCI1C2_TCIE = 1;
+    SCI2C2_TCIE = 1;
 }
 void SCI_disableinterrupts(void) {  
-    SCIC2_TCIE = 0;                 
-    SCIC2_RIE = 0;                  
+    SCI2C2_TCIE = 0;                 
+    SCI2C2_RIE = 0;                  
 }
 uchar SCI_read(void){
-    return SCI1C2_RIE ? SCI_readData:SCI1D;
+    return SCI2D;
 }
 void SCI_write(uchar data){
-    while(!SCI1S1_TDRE){;}
-    SCI1D = data;
+    while(!SCI2S1_TDRE){};
+    SCI2D = data;
 }
 uchar SCI_rxPoll(void){
 	// True if buffer full
-	return SCI1S1_RDRF;
+	return SCI2S1_RDRF;
 }
 
-__interrupt VectorNumber_Vsci1rx void SCI_rxInterrupt(void){
+__interrupt VectorNumber_Vsci2rx void SCI_rxInterrupt(void){
+    uchar data;
     volatile uchar a;
     // Cleans the interrupt flag
-    a = SCI1S1_RDRF;
-    SCI_readData = SCI1D;
+    a = SCI2S1;
+    data = SCI2D;
     // Calls the function
-    SCI_rxInterruptFunction();
+    SCI_rxInterruptFunction(data);
 }
-__interrupt VectorNumber_Vsci1tx void SCI_txInterrupt(void){
+__interrupt VectorNumber_Vsci2tx void SCI_txInterrupt(void){
     SCI_txInterruptFunction();
 }
 /**/
@@ -124,6 +125,7 @@ __interrupt VectorNumber_Vsci1tx void SCI_txInterrupt(void){
 /**/
 void (*SPI_rxInterruptFunction)(void);
 void (*SPI_txInterruptFunction)(void);
+void SPI_Interrupt(void);
 
 void SPI_init(long bauds, MOD_Flags flags){
     int prescaler, scaler;
@@ -146,7 +148,7 @@ void SPI_init(long bauds, MOD_Flags flags){
     else
         prescaler =  0;
     scaler = LOG2_i(scaler) - 1;
-    SPI1BR = (prescaler << 4) | scaler;
+    SPI1BR = ((uchar)prescaler << 4) | (uchar)scaler;
 
     // Enable the module
     SPI1C1_SPE = 1;
@@ -173,7 +175,7 @@ void SPI_disableTxInterrupts(void){
     SPI1C1_SPTIE = 0;
 }
 void SPI_write(uchar data){
-    while(!SPI1S_SPTEF);
+    while(!SPI1S_SPTEF){};
     SPI1D = data;
 }
 uchar SPI_read(void){
@@ -207,33 +209,33 @@ __interrupt VectorNumber_Vspi1 void SPI_Interrupt(void){
 
 
 // RTC
-/**
+/**/
 void (*RTC_interruptFunction)(void);
 
-void RTC_init(MOD_Flags flags){                     
+void RTC_init(MOD_Flags flags){     
+	// The colfire implementation (RTI) only allows
+	// base-2 divisors, :/
     // 1kHz oscilator                            
-    RTCSC_RTCLKS = 0;                               
-    // Preescaler, 1 or 1k                       
-    RTCSC_RTCPS =   flags & RTC_MSECOND ? 8 :       
-                    flags & RTC_10MSECOND ? 11 :    
-                    flags & RTC_100MSECOND ? 13 :   
-                    15;  // Second                
+    SRTISC_RTICLKS = 0;
+    // Preescaler                       
+    SRTISC_RTIS = flags;	// RTC_SECOND = 7 = 1.024 s
+    						// 1 = 8 mS
 }
 void RTC_stop(void){
     RTC_disableInterrupts();
-    RTCSC_RTCPS = 0;
+    SRTISC_RTIS = 0;
 }
 void RTC_enableInterrupts(void (*function)(void)){
     RTC_interruptFunction = function;
-    RTCSC_RTIE = 1;
+    SRTISC_RTIE = 1;
 }
 void RTC_disableInterrupts(void){
-    RTCSC_RTIE = 0;
+	SRTISC_RTIE = 0;
 }
-__interrupt VectorNumber_Vrtc void RTC_interrupt(void){
+__interrupt VectorNumber_Vrti void RTC_interrupt(void){
     RTC_interruptFunction();
     // Cleans the interrupt flag
-    RTCSC_RTIF = 1;
+    SRTISC_RTIACK = 1;
 }
 /**/
 
@@ -335,6 +337,7 @@ __interrupt VectorNumber_Vkeyboard void KBI_interrupt(void){
 
 // Interrupt Request Pin
 void (*IRQ_interruptFunction)(void);
+void IRQ_interrupt(void);
 
 void IRQ_init(MOD_Flags flags){
     // Pullup
@@ -371,11 +374,11 @@ __interrupt VectorNumber_Virq void IRQ_interrupt(void){
 void (*FTM1_interruptFunction)(void);
 
 void FTM1_init(uchar prescaler){   
-    /* Bus clock */             
-    FTM1SC_CPWMS = 1;           
-    FTM1MODE_FTMEN = 1;         
     /* Prescaler */             
-    FTM1SC_PS = prescaler;      
+    FTM1SC_PS = prescaler;     
+    /* Bus clock */            
+    FTM1MODE_FTMEN = 1;        
+	FTM1SC_CLKSA = 1;              
 }
 void FTM1_setMod(uint mod) {
 	FTM1MOD = mod;
@@ -403,14 +406,15 @@ __interrupt VectorNumber_Vftm1ovf void FTM1_interrupt(void){
 // FlexTimer Module 2 / 2 / 2**prescaler
 void (*FTM2_interruptFunction)(void);
 
-void FTM2_init(uchar prescaler){   
-    /* Bus clock /2 */             
-    FTM2SC_CPWMS = 1;           
+void FTM2_init(uchar prescaler){            
     /* Prescaler */             
-    FTM2SC_PS = prescaler;      
+    FTM2SC_PS = prescaler;    
+    /* Bus clock /2 */             
+    FTM2SC_CLKSA = 1;    
 }
 void FTM2_setMod(uint mod) {
-	FTM2MOD = mod;
+	FTM2MODL = mod&0xFF;
+	FTM2MODH = (mod>>8)&0xFF;
 }
 uint FTM2_getCount(void) {
 	return FTM2CNT;

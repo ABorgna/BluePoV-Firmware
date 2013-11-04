@@ -4,11 +4,13 @@
 #define CONSTANTS_H_GUARD
 
 /*      Values          */
-#define BUSCLK 8000000     /* Frecuencia de bus        */
+#define BUSCLK 24000000     /* Frecuencia de bus        */
 #define VOLTAGE 3.3         /* Voltaje de alimentacion  */
 
 #define SCI_BAUDS 115200
-#define SPI_BAUDS 115200
+//#define SCI_BAUDS 921600
+#define SPI_BAUDS 12000000
+//#define SPI_BAUDS 12000000
 
 /*      Matrix params   */
 #define MX_MAX_WIDTH 480
