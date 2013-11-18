@@ -373,15 +373,17 @@ __interrupt VectorNumber_Virq void IRQ_interrupt(void){
 // FlexTimer Module 1 / 2**prescaler
 void (*FTM1_interruptFunction)(void);
 
-void FTM1_init(uchar prescaler){   
-    /* Prescaler */             
-    FTM1SC_PS = prescaler;     
-    /* Bus clock */            
-    FTM1MODE_FTMEN = 1;        
-	FTM1SC_CLKSA = 1;              
+void FTM1_init(uchar prescaler){
+    /* Prescaler */
+    FTM1SC_PS = prescaler;
+    /* Bus clock */
+    FTM1MODE_FTMEN = 1;
+	FTM1SC_CLKSA = 1;
+	FTM1SYNC_REINIT = 1;
 }
 void FTM1_setMod(uint mod) {
 	FTM1MOD = mod;
+	FTM1SYNC_SWSYNC = 1;
 }
 uint FTM1_getCount(void) {
 	return FTM1CNT;
@@ -393,6 +395,10 @@ void FTM1_enableInterrupts(void (*function)(void)){
     FTM1_interruptFunction = function;
     // Interrupt enable
     FTM1SC_TOIE = 1;
+}
+void FTM1_disableInterrupts(void){
+    // Interrupt enable
+    FTM1SC_TOIE = 0;
 }
 __interrupt VectorNumber_Vftm1ovf void FTM1_interrupt(void){
     // Cleans the interrupt flag
@@ -426,6 +432,10 @@ void FTM2_enableInterrupts(void (*function)(void)){
     FTM2_interruptFunction = function;
     // Interrupt enable
     FTM2SC_TOIE = 1;
+}
+void FTM2_disableInterrupts(void){
+    // Interrupt enable
+    FTM2SC_TOIE = 0;
 }
 __interrupt VectorNumber_Vftm2ovf void FTM2_interrupt(void){
     // Cleans the interrupt flag

@@ -7,10 +7,10 @@
 #define BUSCLK 24000000     /* Frecuencia de bus        */
 #define VOLTAGE 3.3         /* Voltaje de alimentacion  */
 
+//#define SCI_BAUDS 19200
 #define SCI_BAUDS 115200
 //#define SCI_BAUDS 921600
 #define SPI_BAUDS 12000000
-//#define SPI_BAUDS 12000000
 
 /*      Matrix params   */
 #define MX_MAX_WIDTH 480
@@ -18,9 +18,12 @@
 
 /*      Encoder         */
 #define FPS_PRESCALER 7
-#define FPS_HYSTERESIS 1
+#define FPS_HYSTERESIS 2
+#define ENCODER_IN PTCD_PTCD2
+//#define ENCODER_POLLING
 
 /*      Leds            */
+//#define LED_PRESCALER 7 // Testing
 #define LED_PRESCALER 0
 #define LED_OUT_EN PTED_PTED5
 #define LED_OUT_CLK PTED_PTED4
@@ -72,10 +75,12 @@ typedef enum {False = 0, True = 1} bool;
 #define STORE 1
 
 /*      Get and set     */
+#define SPEED 2
 #define HEIGHT 4
 #define WIDTH 5
 #define DEPTH 6
 #define TOTAL_WIDTH 7
+
 
 /*      Data            */
 #define DATA 0x10

@@ -6,6 +6,9 @@
 #include "snippets.h"
 #include "modules.h"
 
+#include "encoder.h"
+
 void led_init(void);
+void led_disable(void);
 
 #endif /* LEDS_H_ */

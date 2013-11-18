@@ -1,7 +1,5 @@
 /*
     todo:
-    	id
-
         Half luminance
         Battery voltage
         Saving
@@ -13,7 +11,6 @@
 #include "constants.h"
 #include "global.h"
 #include "snippets.h"
-
 #include "encoder.h"
 #include "leds.h"
 #include "serial.h"
@@ -25,7 +22,7 @@ void main (void){
 
     CPU_init();
     CPU_extCLK();
-    
+
     // Get the id (even/odd)
     id_init();
 
@@ -33,28 +30,29 @@ void main (void){
     //fps_init();
 
     // Leds!
-    //led_init();
-    
+    led_init();
+
     // Serial coms, over bluetooth
     serial_init();
 
     EnableInterrupts;
 
+
+    /* --------- TEST ---------- *
     FTM2_setMod(0x0200); // clk/2**12 = bus/2**20
     FTM2_init(7); // bus/2**8
+    
     FTM2_enableInterrupts(seg);
-    
 
-    /* --------- TEST ---------- */
 	SPI_init(SPI_BAUDS,SPI_MASTER|SPI_INVERTCLK);
-    
+
     // Negated
     LED_OUT_EN = 0;
     LED_OUT_EN_PORT = 1;
     // Rising
     LED_OUT_CLK = 0;
     LED_OUT_CLK_PORT = 1;
-    
+
     /* -------- /TEST ---------- */
 
     for(;;){
@@ -65,40 +63,19 @@ void main (void){
 }
 
 void seg(void){
-    static uchar i = 0;
-
-    switch(i++){
-		case 0:
-			LED_OUT_CLK = 1;
-			SPI_WRITE(~MX_pixelArray0[0][0]);
-			break;
-		case 1:
-			SPI_WRITE(~MX_pixelArray0[0][1]);
-			break;
-		case 2:
-			SPI_WRITE(~MX_pixelArray0[0][2]);
-			break;
-		case 3:
-			SPI_WRITE(~MX_pixelArray0[0][3]);
-			break;
-		case 4:
-			SPI_WRITE(~MX_pixelArray0[0][4]);
-			break;
-		case 5:
-			SPI_WRITE(~MX_pixelArray0[0][5]);
-			LED_OUT_CLK = 0;
-			i = 0;
-			break;
-    }
-	
-	/**
 	static unsigned long long a = 0;
     static uint c;
     static uchar i = 0;
-    
+
     switch(i++){
     	case 0:
 			LED_OUT_CLK = 1;
+
+			/**/
+			
+			a = ~((unsigned long long)0);
+			
+			/**
 			
 			a  = (unsigned long long)1<<(((c/7) %16)*3+0);
 			a |= (unsigned long long)1<<(((c/11) %16)*3+1);
@@ -106,8 +83,10 @@ void seg(void){
 			a |= (unsigned long long)3<<(45-((c/13) %16)*3+0);
 			a |= (unsigned long long)5<<(45-((c/19) %16)*3+0);
 			a |= (unsigned long long)6<<(45-((c/25) %16)*3+0);
-			
+
 			c++;
+
+			/**/
 			
 			SPI_WRITE(((a>>40)&0xff)^0xff);
 			break;
@@ -129,5 +108,4 @@ void seg(void){
     	    i = 0;
 			break;
     }
-    /**/
 }

@@ -30,11 +30,13 @@ bool get_height(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_depth(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
+bool get_speed(uchar data, uchar *buffer, uint byteNum, uint *ack);
 
 bool set_height(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_depth(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
+bool set_speed(uchar data, uchar *buffer, uint byteNum, uint *ack);
 
 bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack);
@@ -51,10 +53,12 @@ bool (*commands[])(uchar,uchar*,uint,uint*) = {
     get_width,
     get_depth,
     get_total_width,
+    get_speed,
     set_height,
     set_width,
     set_depth,
     set_total_width,
+    set_speed,
     dat_write_column,
     dat_write_section,
     dat_burst,
@@ -69,7 +73,7 @@ void serial_init(void){
     SCI_enableRxInterrupts(receiveByte);
 
     // Reset the sequence if nothing is received in 1s
-    RTC_init(1);	// 8mS
+    RTC_init(3);	// 8mS
     RTC_enableInterrupts(rxIdleReset);
 }
 
@@ -106,10 +110,12 @@ void serial_update(void){
             case (DATA | WRITE_SECTION):                fnNum++;
             case (DATA | PRECODED | WRITE_COLUMN):
             case (DATA | WRITE_COLUMN):                 fnNum++;
+            case (COMMAND | SET | SPEED):         		fnNum++;
             case (COMMAND | SET | TOTAL_WIDTH):         fnNum++;
             case (COMMAND | SET | DEPTH):               fnNum++;
             case (COMMAND | SET | WIDTH):               fnNum++;
             case (COMMAND | SET | HEIGHT):              fnNum++;
+            case (COMMAND | GET | SPEED):         		fnNum++;
             case (COMMAND | GET | TOTAL_WIDTH):         fnNum++;
             case (COMMAND | GET | DEPTH):               fnNum++;
             case (COMMAND | GET | WIDTH):               fnNum++;
@@ -174,6 +180,7 @@ bool fn_clean(uchar data, uchar *buffer, uint byteNum, uint *ack){
 }
 bool fn_store(uchar data, uchar *buffer, uint byteNum, uint *ack){
 	//todo
+	led_enable();
 	return True;
 }
 
@@ -195,6 +202,11 @@ bool get_depth(uchar data, uchar *buffer, uint byteNum, uint *ack){
 bool get_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
 	printDebug("Get t width\r\n");
 	*ack = MX_totalWidth;
+    return True;
+}
+bool get_speed(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get t width\r\n");
+	*ack = FPS_clockMod_actual;
     return True;
 }
 
@@ -242,8 +254,27 @@ bool set_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
             buffer[0] = data;
             return False;
         default:
-            MX_totalWidth = (uint)(buffer[0])<<8 & data;
+            MX_totalWidth = (uint)(buffer[0])<<8 | data;
             *ack = 0xffff;
+            return True;
+    }
+}
+bool set_speed(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	uint a;
+	printDebug("Set t width\r\n");
+    switch(byteNum){
+        case 0:
+            return False;
+        case 1:
+            buffer[0] = data;
+            return False;
+        default:
+        	a = buffer[0];
+        	a <<=8;
+        	a |= data;
+        	FPS_clockMod_real = a;
+        	FPS_clockMod_actual = a;
+        	*ack = 0xffff;
             return True;
     }
 }

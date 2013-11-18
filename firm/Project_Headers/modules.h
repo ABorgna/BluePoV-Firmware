@@ -73,10 +73,10 @@ uint ADC_res_i(void);
 void GPIO_out(uchar *port,uchar offset);
 void GPIO_pullup(uchar *port,uchar offset);
 
-// Keyboard Interrupt
+/** Keyboard Interrupt
 void KBI_interrupt(uchar *port,uchar offset,uchar positive);
 void KBI_enableInterrupts(uchar *port,void (*function)(void),uchar level);
-void KBI_disableInterrupts(uchar *port);
+void KBI_disableInterrupts(uchar *port);/**/
 
 // Interrupt Request Pin
 void IRQ_init(MOD_Flags flags);
@@ -89,6 +89,7 @@ void FTM1_setMod(uint);
 uint FTM1_getCount(void);
 void FTM1_resetCount(void);
 void FTM1_enableInterrupts(void (*function)(void));
+void FTM1_disableInterrupts(void);
 
 // FlexTimer Module, busclk / 2 / 2**prescaler
 void FTM2_init(uchar prescaler);
@@ -96,5 +97,6 @@ void FTM2_setMod(uint);
 uint FTM2_getCount(void);
 void FTM2_resetCount(void);
 void FTM2_enableInterrupts(void (*function)(void));
+void FTM2_disableInterrupts(void);
 
 #endif // MODULES_H_GUARD
