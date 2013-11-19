@@ -8,11 +8,11 @@ void receiveByte(uchar);
 bool waiting_tkn = True;
 bool receivedLastSecond = True;
 
-#define rxQueueSize 64
+#define rxQueueSize 8000
 uchar rxQueue[rxQueueSize];
 // Had strange errors using pointers
-uchar rxQueueHead = 0;
-uchar rxQueueTail = 0;
+uint rxQueueHead = 0;
+uint rxQueueTail = 0;
 
 
 
@@ -62,7 +62,7 @@ bool (*commands[])(uchar,uchar*,uint,uint*) = {
     dat_write_column,
     dat_write_section,
     dat_burst,
-    dat_interlaced_burst
+    dat_burst
 };
 
 
@@ -73,7 +73,7 @@ void serial_init(void){
     SCI_enableRxInterrupts(receiveByte);
 
     // Reset the sequence if nothing is received in 1s
-    RTC_init(3);	// 8mS
+    RTC_init(1);	// 8mS
     RTC_enableInterrupts(rxIdleReset);
 }
 
@@ -83,7 +83,6 @@ void serial_update(void){
     static uchar buffer[32];
     uint ack;
     uchar read; 
-    
     if(rxQueueTail == rxQueueHead){
     	return;
     }
@@ -131,10 +130,20 @@ void serial_update(void){
     }
     // Call the function if there's any selected
     // and send the response if it has finished
-    if (!waiting_tkn &&
-    		(waiting_tkn = commands[fnNum](read,buffer,byteNum++,&ack))){
-        SCI_WRITE((uchar)(ack>>8));
-        SCI_WRITE((uchar)(ack&0xFF));
+    if (!waiting_tkn){
+        receivedLastSecond = True;
+    	// Stop blinking while we receive the data,
+    	// so we have the time to process it
+    	LED_enabled = 0;
+    	
+    	waiting_tkn = commands[fnNum](read,buffer,byteNum++,&ack);
+    	if (waiting_tkn){
+			SCI_WRITE((uchar)(ack>>8));
+			SCI_WRITE((uchar)(ack&0xFF));
+        	// Stop blinking while we receive the data,
+        	// so we have the time to process it
+        	LED_enabled = 1;
+		}
     }
 }
 
@@ -494,6 +503,7 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
 
     switch(byteNum){
         case 0:
+        	
             // Get the PRECODED flag
             buffer[0] = data & PRECODED;
 

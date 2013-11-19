@@ -31,13 +31,11 @@ void led_disable(void){
 
 // Internal definitions
 void led_col_interrupt(void){
+	uchar temp;
 
 #ifdef ENCODER_POLLING
 	fps_poll();
 #endif
-	
-	if(!LED_enabled)
-		return;
 	
 	// Show the data sent
 	LED_OUT_CLK = 1;
@@ -52,10 +50,15 @@ void led_col_interrupt(void){
 	
 	// If we completed the matrix go idle
 	if(LED_column+MX_offset >= MX_width){
+		temp = LED_enabled;
 		led_enable();	// <---------------------------- debug -| todo |-
+		LED_enabled = temp; 
 		LED_column++;
 		LED_subcolumn--;
 	}//led_disable();
+	
+	if(!LED_enabled)
+		return;
 
 	// Adjust to the motor speed
     FTM1_setMod(FPS_clockMod_actual);
