@@ -8,7 +8,7 @@ void receiveByte(uchar);
 bool waiting_tkn = True;
 bool receivedLastSecond = True;
 
-#define rxQueueSize 8000
+#define rxQueueSize 16000
 uchar rxQueue[rxQueueSize];
 // Had strange errors using pointers
 uint rxQueueHead = 0;
@@ -31,12 +31,14 @@ bool get_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_depth(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool get_speed(uchar data, uchar *buffer, uint byteNum, uint *ack);
+bool get_dimm(uchar data, uchar *buffer, uint byteNum, uint *ack);
 
 bool set_height(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_depth(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool set_speed(uchar data, uchar *buffer, uint byteNum, uint *ack);
+bool set_dimm(uchar data, uchar *buffer, uint byteNum, uint *ack);
 
 bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint *ack);
 bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack);
@@ -54,13 +56,17 @@ bool (*commands[])(uchar,uchar*,uint,uint*) = {
     get_depth,
     get_total_width,
     get_speed,
+    get_dimm,
     set_height,
     set_width,
     set_depth,
     set_total_width,
     set_speed,
+    set_dimm,
     dat_write_column,
     dat_write_section,
+    dat_burst,
+    dat_burst,
     dat_burst,
     dat_burst
 };
@@ -73,7 +79,7 @@ void serial_init(void){
     SCI_enableRxInterrupts(receiveByte);
 
     // Reset the sequence if nothing is received in 1s
-    RTC_init(1);	// 8mS
+    RTC_init(6);	// 1S
     RTC_enableInterrupts(rxIdleReset);
 }
 
@@ -109,11 +115,13 @@ void serial_update(void){
             case (DATA | WRITE_SECTION):                fnNum++;
             case (DATA | PRECODED | WRITE_COLUMN):
             case (DATA | WRITE_COLUMN):                 fnNum++;
+            case (COMMAND | SET | DIMM):         		fnNum++;
             case (COMMAND | SET | SPEED):         		fnNum++;
             case (COMMAND | SET | TOTAL_WIDTH):         fnNum++;
             case (COMMAND | SET | DEPTH):               fnNum++;
             case (COMMAND | SET | WIDTH):               fnNum++;
             case (COMMAND | SET | HEIGHT):              fnNum++;
+            case (COMMAND | GET | DIMM):         		fnNum++;
             case (COMMAND | GET | SPEED):         		fnNum++;
             case (COMMAND | GET | TOTAL_WIDTH):         fnNum++;
             case (COMMAND | GET | DEPTH):               fnNum++;
@@ -134,7 +142,7 @@ void serial_update(void){
         receivedLastSecond = True;
     	// Stop blinking while we receive the data,
     	// so we have the time to process it
-    	LED_enabled = 0;
+    	//LED_enabled = 0;
     	
     	waiting_tkn = commands[fnNum](read,buffer,byteNum++,&ack);
     	if (waiting_tkn){
@@ -142,7 +150,7 @@ void serial_update(void){
 			SCI_WRITE((uchar)(ack&0xFF));
         	// Stop blinking while we receive the data,
         	// so we have the time to process it
-        	LED_enabled = 1;
+        	//LED_enabled = 1;
 		}
     }
 }
@@ -214,8 +222,13 @@ bool get_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
     return True;
 }
 bool get_speed(uchar data, uchar *buffer, uint byteNum, uint *ack){
-	printDebug("Get t width\r\n");
+	printDebug("Get speed\r\n");
 	*ack = FPS_clockMod_actual;
+    return True;
+}
+bool get_dimm(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Get dimm\r\n");
+	*ack = LED_dimm;
     return True;
 }
 
@@ -249,8 +262,11 @@ bool set_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
 }
 bool set_depth(uchar data, uchar *buffer, uint byteNum, uint *ack){
 	printDebug("Set depth\r\n");
+	LED_dimm = 0;
     if (byteNum == 0)
         return False;
+    MX_depth = data;
+    
     *ack = 0xffff;
     return True;
 }
@@ -270,7 +286,7 @@ bool set_total_width(uchar data, uchar *buffer, uint byteNum, uint *ack){
 }
 bool set_speed(uchar data, uchar *buffer, uint byteNum, uint *ack){
 	uint a;
-	printDebug("Set t width\r\n");
+	printDebug("Set speed\r\n");
     switch(byteNum){
         case 0:
             return False;
@@ -281,8 +297,24 @@ bool set_speed(uchar data, uchar *buffer, uint byteNum, uint *ack){
         	a = buffer[0];
         	a <<=8;
         	a |= data;
-        	FPS_clockMod_real = a;
-        	FPS_clockMod_actual = a;
+        	if(!ID)
+        		a += 1;
+        	if(a>=1100){
+				FPS_clockMod_real = a;
+				FPS_clockMod_actual = a;
+        	}
+        	*ack = 0xffff;
+            return True;
+    }
+}
+bool set_dimm(uchar data, uchar *buffer, uint byteNum, uint *ack){
+	printDebug("Set dimm\r\n");
+    MX_depth = 1;
+    switch(byteNum){
+        case 0:
+            return False;
+        default:
+        	LED_dimm = data;
         	*ack = 0xffff;
             return True;
     }
@@ -322,7 +354,7 @@ bool dat_write_column(uchar data, uchar *buffer, uint byteNum, uint *ack){
             return False;
         default:
             // Ignore the data meant for the other side
-            if (byteNum%2 != !ID)
+            if ((byteNum &1) ^ (ID &1))
                 return False;
 
             // Processing order differs between encoded and non encoded tx
@@ -423,8 +455,8 @@ bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack){
             return False;
         default:
             // Ignore the data meant for the other side
-            if (!(byteNum%2) != !ID)
-                return False;
+            if ((byteNum &1) ^ (ID &1))
+                break;
 
             // Processing order differs between encoded and non encoded tx
             if(buffer[0]){
@@ -434,7 +466,7 @@ bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack){
                     // 1 bit-depth, buffer 3 bytes
                     buffer[3+pxByteNum%3] = data;
                     if(pxByteNum%3 < 2)
-                        return False;
+                        break;
 
                     // Save the data
                     // Ignore the column-array boundaries,
@@ -447,7 +479,7 @@ bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack){
                     // 2 bit-depth, buffer 6 bytes
                     buffer[3+pxByteNum%6] = data;
                     if(pxByteNum%6 < 5)
-                        return False;
+                        break;
 
                     // Save the data
                     // Ignore the column-array boundaries,
@@ -465,7 +497,7 @@ bool dat_write_section(uchar data, uchar *buffer, uint byteNum, uint *ack){
                 // process both color depth arrays at the same time
                 buffer[3+pxByteNum %24] = data;
                 if(pxByteNum %24 < 23)
-                    return False;
+                    break;
 
                 //
                 encodeBytesSerie(buffer+3,MX_depth);
@@ -495,6 +527,8 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
     // buffer 0 = precoded flag
 
     static uint totalBytes = 0;
+    static uint bytesPerDepth = 0;
+    volatile uchar ignore = (byteNum&1) == ID;
     uint pxByteNum = (byteNum-1)>>1; // Don't count bytes for the other matrix
     // For optimisation purposes
     static uchar colBytes;
@@ -513,6 +547,8 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                 // Encoded, $bit_depth bits per color
                 // Height * columns * colors * bit depth / bits per byte + token
                 totalBytes = MX_height *MX_width *3 *MX_depth /8 +1;
+                // Height * columns * colors / bits per byte /fields
+                bytesPerDepth = MX_height *MX_width *3 /8 /2;
             }
             else {
                 // Non-encoded, 1 byte per color
@@ -525,8 +561,8 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
             return False;
         default:
             // Ignore the data meant for the other side
-            if (!(byteNum%2) != !ID)
-                return False;
+            if (ignore)
+                break;
 
             // Processing order differs between encoded and non encoded tx
             if(buffer[0]){
@@ -537,7 +573,7 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                     buffer[1+pxByteNum%3] = data;
                     
                     if(pxByteNum%3 < 2)
-                        return False;
+                        break;
                     
 
                     // Save the data
@@ -547,19 +583,23 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                     MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[3];
                 }
                 else{
-                    // 2 bit-depth, buffer 6 bytes
-                    buffer[1+pxByteNum%6] = data;
-                    if(pxByteNum%6 < 5)
-                        return False;
+                    // 2 bit-depth, buffer 3 bytes
+                    buffer[1+pxByteNum%3] = data;
+                    
+                    if(pxByteNum%3 < 2)
+                        break;
 
                     // Save the data
                     // Calculate the divider at the beginning of the reception
-                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[1];
-                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[2];
-                    MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[3];
-                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[4];
-                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[5];
-                    MX_pixelArray1[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[6];
+                    if(pxByteNum < bytesPerDepth){
+						MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-2] = buffer[1];
+						MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-1] = buffer[2];
+						MX_pixelArray0[pxByteNum/colBytes][pxByteNum%colBytes-0] = buffer[3];
+                    } else {
+						MX_pixelArray1[(pxByteNum-bytesPerDepth)/colBytes][pxByteNum%colBytes-2] = buffer[1];
+						MX_pixelArray1[(pxByteNum-bytesPerDepth)/colBytes][pxByteNum%colBytes-1] = buffer[2];
+						MX_pixelArray1[(pxByteNum-bytesPerDepth)/colBytes][pxByteNum%colBytes-0] = buffer[3];
+                    }
                 }
             }
             else{
@@ -567,7 +607,7 @@ bool dat_burst(uchar data, uchar *buffer, uint byteNum, uint *ack){
                 // process both color depth arrays at the same time
                 buffer[1+pxByteNum %24] = data;
                 if(pxByteNum %24 < 23)
-                    return False;
+                    break;
 
                 //
                 encodeBytesSerie(buffer+1,MX_depth);

@@ -40,6 +40,16 @@ void led_col_interrupt(void){
 	// Show the data sent
 	LED_OUT_CLK = 1;
 	SPI_disableTxInterrupts();
+	
+	// Wibbly wobbly
+	if(LED_dimm){
+		LED_dimm_state = !LED_dimm_state;
+		if(LED_dimm_state){
+		    SPI_enableTxInterrupts(led_tx_interrupt);
+		    LED_OUT_CLK = 0;
+			return;
+		}
+	}
     
     // Update the position counters
     LED_columnByte = 0;
@@ -49,19 +59,25 @@ void led_col_interrupt(void){
 	}
 	
 	// If we completed the matrix go idle
-	if(LED_column+MX_offset >= MX_width){
+	if(LED_column >= MX_width){
 		temp = LED_enabled;
-		led_enable();	// <---------------------------- debug -| todo |-
+		led_reset();	// <---------------------------- debug -| todo |-
 		LED_enabled = temp; 
-		LED_column++;
-		LED_subcolumn--;
+		//LED_column++;
+		LED_subcolumn = 2;
 	}//led_disable();
 	
 	if(!LED_enabled)
 		return;
 
 	// Adjust to the motor speed
-    FTM1_setMod(FPS_clockMod_actual);
+	if(!LED_dimm){
+	    FTM1_setMod(FPS_clockMod_actual);
+	} else if(MX_depth > 1){
+	    FTM1_setMod(FPS_clockMod_actual/3);
+	} else {
+		FTM1_setMod(FPS_clockMod_actual/2-7);
+	}
     FTM1_resetCount();
     
     // Calculate the number of bytes per column
@@ -75,12 +91,15 @@ void led_col_interrupt(void){
 }
 
 void led_tx_interrupt(void){
-	
-	if(MX_depth==1 || !(LED_subcolumn&0x1)){
-		SPI_WRITE(~MX_pixelArray0[MX_width-LED_column-MX_offset][LED_columnByte]);
+
+	if(LED_dimm && LED_dimm_state){
+		SPI_WRITE(0xff);
+	}
+	else if(MX_depth==1 || !(LED_subcolumn&0x1)){
+		SPI_WRITE(~MX_pixelArray0[MX_width-LED_column][LED_columnByte]);
 	}
 	else{
-		SPI_WRITE(~MX_pixelArray1[MX_width-LED_column-MX_offset][LED_columnByte]);
+		SPI_WRITE(~MX_pixelArray1[MX_width-LED_column][LED_columnByte]);
 	}
 
 
@@ -92,4 +111,19 @@ void led_tx_interrupt(void){
 		LED_columnByte = 0;
 		SPI_disableTxInterrupts();
 	}
+}
+
+void led_enable(void){
+    LED_column = ID ? MX_width/2 -1 :((uint)0)-1;
+    LED_subcolumn = 0;
+    LED_columnByte = 0;
+    LED_enabled = 1;
+}
+
+void led_reset(void){
+	sync_send();
+    LED_column = 0;
+    LED_subcolumn = 0;
+    LED_columnByte = 0;
+    LED_enabled = 1;
 }

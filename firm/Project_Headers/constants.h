@@ -34,6 +34,10 @@
 #define ID_PIN PTDD_PTDD2
 #define ID_PIN_PULL PTDPE_PTDPE2
 
+/*		uC synchro		*/
+#define SYNC_PIN PTGD_PTGD4
+#define SYNC_PIN_PORT PTGDD_PTGDD4
+
 /*      Types           */
 typedef unsigned char uchar;
 typedef unsigned int uint;
@@ -76,6 +80,7 @@ typedef enum {False = 0, True = 1} bool;
 
 /*      Get and set     */
 #define SPEED 2
+#define DIMM 3
 #define HEIGHT 4
 #define WIDTH 5
 #define DEPTH 6

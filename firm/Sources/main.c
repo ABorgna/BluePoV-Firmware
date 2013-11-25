@@ -28,6 +28,9 @@ void main (void){
 
     // Encoder input
     //fps_init();
+    
+    // uC synchro
+    sync_init();
 
     // Leds!
     led_init();

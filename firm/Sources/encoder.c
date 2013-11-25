@@ -53,17 +53,5 @@ void fps_inter(void){
     }
 
     // Reset the coordinates
-    led_enable();
-}
-
-
-
-// Last minute fix...
-void led_enable(void){
-    LED_column = ((uint)0)-1;
-    LED_subcolumn = 0;
-    LED_columnByte = 0;
-    //FTM1_enableInterrupts(led_col_interrupt);
-    LED_enabled = 1;
-    FTM1_resetCount();
+    //led_enable();
 }

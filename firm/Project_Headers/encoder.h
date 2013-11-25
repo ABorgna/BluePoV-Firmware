@@ -11,7 +11,4 @@
 void fps_init(void);
 void fps_poll(void);
 
-// Last minute fix...
-void led_enable(void);
-
 #endif /* ENCODER_H_ */

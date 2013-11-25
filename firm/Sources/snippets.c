@@ -119,7 +119,7 @@ uchar* SNP_strCopy(uchar* ptr0,uchar* ptr1){
 // Returns the str len, excluding the null char
 uchar SNP_strLen(uchar* str){
     uchar i = 0;
-    for(;*(str+i) && i<=255; i++);
+    for(;*(str+i) && ++i<255;){};
     return i;
 }
 

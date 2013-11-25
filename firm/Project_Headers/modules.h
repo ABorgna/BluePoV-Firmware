@@ -69,14 +69,10 @@ uint ADC_res_i(void);
 #define ADC_RES ADCRL /* 8b */
 #define ADC_RES_I ADCR /* 16b */
 
-// General Purpose I/O
-void GPIO_out(uchar *port,uchar offset);
-void GPIO_pullup(uchar *port,uchar offset);
-
-/** Keyboard Interrupt
-void KBI_interrupt(uchar *port,uchar offset,uchar positive);
-void KBI_enableInterrupts(uchar *port,void (*function)(void),uchar level);
-void KBI_disableInterrupts(uchar *port);/**/
+/* Keyboard Interrupt */
+void KBI_init(uchar number);
+void KBI_enableInterrupts(void (*function)(void));
+void KBI_disableInterrupts(void);/**/
 
 // Interrupt Request Pin
 void IRQ_init(MOD_Flags flags);

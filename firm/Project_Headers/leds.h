@@ -5,10 +5,12 @@
 #include "global.h"
 #include "snippets.h"
 #include "modules.h"
-
-#include "encoder.h"
+// Fixing the fixes
+#include "other.h"
 
 void led_init(void);
 void led_disable(void);
+void led_enable(void);
+void led_reset(void);
 
 #endif /* LEDS_H_ */

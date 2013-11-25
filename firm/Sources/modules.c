@@ -302,36 +302,30 @@ __interrupt VectorNumber_Vadc void ADC_interrupt(void){
 }
 /**/
 
-// General Purpose I/O
-/**
-void GPIO_out(uchar *port,uchar offset){
-    SNP_maskWrite(port+PTxDD_off,0xff,1<<offset);
-}
-void GPIO_pullup(uchar *port,uchar offset){
-    SNP_maskWrite(port+PTxPE_off,0xff,1<<offset);
-}
-/**/
+/* Keyboard Interrupt	*/
+void (*KBI_interruptFunction)(void);
 
-// Keyboard Interrupt
-/**
-void KBI_interrupt(uchar *port,uchar offset,uchar positive){
-    SNP_maskWrite(port+PTxPS_off,0xff,1<<offset);
-    SNP_maskWrite(port+PTxES_off,positive?0:1,1<<offset);
+void KBI_init(uchar number){
+	KBISC_KBIE = 0; 	// Disable interrupt
+	KBISC_KBACK = 1; 	// Interrupt ack
+	KBISC_KBIMOD = 0; 	// Edge
+    KBISC_KBEDG = 0; 	// Falling edge
+    KBIPE |= 1<<number;
 }
-void KBI_enableInterrupts(uchar *port,void (*function)(void),uchar level){
-    GPIO_interruptFunction = function;
-    SNP_maskWrite(port+PTxSC_off,0xff,2);
-    SNP_maskWrite(port+PTxSC_off,level?1:0,1);
+void KBI_enableInterrupts(void (*function)(void)){
+	KBI_interruptFunction = function;
+	KBISC_KBIE = 1; 	// Disable interrupt
 }
-void KBI_disableInterrupts(uchar *port){
-    SNP_maskWrite(port+PTxSC_off,0,2);
+void KBI_disableInterrupts(void){
+	KBISC_KBIE = 0; 	// Disable interrupt
+	KBISC_KBACK = 1; 	// Interrupt ack
 }
 
 __interrupt VectorNumber_Vkeyboard void KBI_interrupt(void){
     // Cleans the interrupt flag
-    SNP_maskWrite(&PTAD+PTxSC_off,0xff,4);   // PTxSC_ACK
+	KBISC_KBACK = 1; 	// Interrupt ack
     // Calls the function
-    GPIO_interruptFunction();
+    KBI_interruptFunction();
 }
 /**/
 

@@ -21,10 +21,10 @@ extern uint MX_totalWidth;      // Number of pixels
 
 // Rotational speed variables
 extern uint FPS_clockMod_real;
-extern uint FPS_clockMod_actual;
+extern uint FPS_clockMod_actual;	// Debe ser > 1075
 
 // Id
-extern bool ID;
+extern uchar ID;
 
 // Led
 extern uint LED_column;
@@ -32,6 +32,8 @@ extern uchar LED_subcolumn;
 extern uchar LED_columnByte;
 extern uint LED_bytesPerCol;
 extern uchar LED_enabled;
+extern uchar LED_dimm;
+extern uchar LED_dimm_state;
 
 // Debugging
 //#define DEBUG_PRINT
